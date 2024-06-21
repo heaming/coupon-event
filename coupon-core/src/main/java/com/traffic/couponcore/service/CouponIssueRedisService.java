@@ -17,11 +17,11 @@ public class CouponIssueRedisService {
     private final RedisRepository redisRepository;
 
     public void checkCouponIssueQuantity(CouponRedisEntity coupon, long userId) {
-        if (!availableUserIssueQuantity(coupon.id(), userId)) {
-            throw new CouponIssueException(DUPLICATED_COUPON_ISSUE, "발급 가능한 수량을 초과합니다. couponId : %s, userId: %s".formatted(coupon.id(), userId));
-        }
         if (!availableTotalIssueQuantity(coupon.totalQuantity(), coupon.id())) {
             throw new CouponIssueException(INVALID_COUPON_ISSUE_QUANTITY, "발급 가능한 수량을 초과합니다. couponId : %s, userId : %s".formatted(coupon.id(), userId));
+        }
+        if (!availableUserIssueQuantity(coupon.id(), userId)) {
+            throw new CouponIssueException(DUPLICATED_COUPON_ISSUE, "발급 가능한 수량을 초과합니다. couponId : %s, userId: %s".formatted(coupon.id(), userId));
         }
     }
 
