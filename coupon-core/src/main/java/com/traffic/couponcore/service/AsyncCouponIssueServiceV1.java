@@ -8,6 +8,7 @@ import com.traffic.couponcore.exception.ErrorCode;
 import com.traffic.couponcore.model.Coupon;
 import com.traffic.couponcore.repository.redis.RedisRepository;
 import com.traffic.couponcore.repository.redis.dto.CouponIssueRequest;
+import com.traffic.couponcore.repository.redis.dto.CouponRedisEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,26 +22,15 @@ public class AsyncCouponIssueServiceV1 {
 
     private final RedisRepository redisRepository;
     private final CouponIssueRedisService couponIssueRedisService;
-    private final CouponIssueService couponIssueService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final DistributeLockExecutor distributeLockExecutor;
+    private final CouponCacheService couponCacheService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void issue(long couponId, long userId) {
-        Coupon coupon = couponIssueService.findCouponById(couponId);
-        if(!coupon.availableIssueDate()) {
-            throw new CouponIssueException(INVALID_COUPON_ISSUE_DATE,
-                    "발급 가능한 일자가 아닙니다. couponId: %s, duration: %s - %s".formatted(couponId, coupon.getDateIssueStart(), coupon.getDateIssueEnd()));
-        }
-
-        distributeLockExecutor.execute("lock %s".formatted(couponId), 3000, 3000, () -> {
-            if(!couponIssueRedisService.availableTotalIssueQuantity(coupon.getTotalQuantity(), couponId)) {
-                throw new CouponIssueException(INVALID_COUPON_ISSUE_QUANTITY,
-                        "발급 가능한 수량을 초과합니다. couponId: %s, userId: %s".formatted(couponId, userId));
-            }
-            if(!couponIssueRedisService.availableUserIssueQuantity(couponId, userId)) {
-                throw new CouponIssueException(DUPLICATED_COUPON_ISSUE,
-                        "이미 발급 요청이 처리되었습니다. couponId: %s, userId: %s".formatted(couponId, userId));
-            }
+        CouponRedisEntity coupon = couponCacheService.getCouponCache(couponId);
+        coupon.checkIssuableCoupon();
+        distributeLockExecutor.execute("lock_%s".formatted(couponId), 3000, 3000, () -> {
+            couponIssueRedisService.checkCouponIssueQuantity(coupon, userId);
             issueRequest(couponId, userId);
         });
     }
@@ -57,7 +47,6 @@ public class AsyncCouponIssueServiceV1 {
         } catch (JsonProcessingException e) {
             throw new CouponIssueException(FAIL_COUPON_ISSUE_REQUEST, "input: %s".formatted(issueRequest));
         }
-
     }
 
 }
