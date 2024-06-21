@@ -1,5 +1,7 @@
 package com.traffic.couponcore.model;
 
+import com.traffic.couponcore.exception.CouponIssueException;
+import com.traffic.couponcore.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,4 +46,37 @@ public class Coupon extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime dateIssueEnd;
 
+    /**
+     * @title 발급 수량 검증
+     * @return boolean 발급 가능 여부
+     */
+    public boolean availableIssueQuantity() {
+        if(totalQuantity == null) {
+            return true;
+        }
+        return totalQuantity > issuedQuantity;
+    }
+
+    /**
+     * @title 발급 기한 검증
+     * @return boolean 발급 가능 여부
+     */
+    public boolean availableIssueDate() {
+        LocalDateTime now = LocalDateTime.now();
+        return dateIssueStart.isBefore(now) && dateIssueEnd.isAfter(now);
+    }
+
+    public void issue() {
+        if(!availableIssueQuantity()) {
+            throw new CouponIssueException(ErrorCode.INVALID_COUPON_ISSUE_QUANTITY,
+                    "발급 가능한 수량을 초과합니다. total : %s, issued: %s".formatted(totalQuantity, issuedQuantity));
+        }
+
+        if(!availableIssueDate()) {
+            throw new CouponIssueException(ErrorCode.INVALID_COUPON_ISSUE_DATE,
+                    "발급 가능한 일자가 아닙니다. request: %s, valid: %s - %s".formatted(LocalDateTime.now(), dateIssueStart, dateIssueEnd));
+        }
+
+        issuedQuantity++;
+    }
 }
