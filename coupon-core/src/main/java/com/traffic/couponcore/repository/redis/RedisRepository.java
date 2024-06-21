@@ -14,4 +14,20 @@ public class RedisRepository {
         return redisTemplate.opsForZSet().addIfAbsent(key, value, score);
     }
 
+    public Long sAdd(String key, String value) {
+        return redisTemplate.opsForSet().add(key, value);
+    }
+
+    public Long sCard(String key) {
+        return redisTemplate.opsForSet().size(key);
+    }
+
+    public Boolean sIsmember(String key, String value) {
+        return redisTemplate.opsForSet().isMember(key, value);
+    }
+
+    public Long rPush(String key, String value) {
+        return redisTemplate.opsForList().rightPush(key, value);
+    }
+
 }
