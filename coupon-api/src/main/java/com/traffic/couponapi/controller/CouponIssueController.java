@@ -19,6 +19,4 @@ public class CouponIssueController {
         couponIssueRequestService.issueReqeustV1(request);
         return new CouponIssueResponseDto(true, null);
     }
-
-
 }
