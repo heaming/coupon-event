@@ -3,10 +3,12 @@ package com.traffic.couponcore.service;
 import com.traffic.couponcore.exception.CouponIssueException;
 import com.traffic.couponcore.model.Coupon;
 import com.traffic.couponcore.model.CouponIssue;
+import com.traffic.couponcore.model.event.CouponIssueCompleteEvent;
 import com.traffic.couponcore.repository.mysql.CouponIssueJpaRepository;
 import com.traffic.couponcore.repository.mysql.CouponIssueRepository;
 import com.traffic.couponcore.repository.mysql.CouponJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +22,14 @@ public class CouponIssueService {
     private final CouponJpaRepository couponJpaRepository;
     private final CouponIssueJpaRepository couponIssueJpaRepository;
     private final CouponIssueRepository couponIssueRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public void issue(long couponId, long userId) {
         Coupon coupon = findCouponWithLock(couponId);
         coupon.issue();
         saveCouponIssue(couponId, userId);
+        publishCouponEvent(coupon);
     }
 
     @Transactional(readOnly = true)
@@ -63,4 +67,9 @@ public class CouponIssueService {
         }
     }
 
+    private void publishCouponEvent(Coupon coupon) {
+        if(coupon.isIssueComplete()) {
+            applicationEventPublisher.publishEvent(new CouponIssueCompleteEvent(coupon.getId()));
+        }
+    }
 }
